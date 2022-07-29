@@ -1,5 +1,7 @@
 name: Dev Workflow 
 on:  push
+  branches:
+    - master
 
 jobs:
   deploy:
