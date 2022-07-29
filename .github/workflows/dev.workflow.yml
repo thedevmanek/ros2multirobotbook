@@ -1,4 +1,4 @@
-name: Dev Workflow - Test and check thing
+name: Dev Workflow 
 on:  push
 
 jobs:
