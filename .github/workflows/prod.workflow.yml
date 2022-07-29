@@ -1,4 +1,4 @@
-name: Master Workflow - Build and deploy to production
+name: Master Workflow 
 
 on:  pull_request
 
