@@ -4472,13 +4472,13 @@ Furthermore, each robot's position will be updated live as the robots are moving
 <p>Controlling the vendor robots.</p>
 </li>
 </ul>
-<p>The <code>fleet_adapter</code> receives information (position, current ongoing tasks, battery levels etc.) about each robot in the fleet and sends them to the core RMF system to for task planning and scheduling.</p>
+<p>The <code>fleet_adapter</code> receives information (position, current ongoing tasks, battery levels etc.) about each robot in the fleet and sends them to the core RMF system for task planning and scheduling.</p>
 <ul>
 <li>
 <p>When the core RMF system has a task to dispatch, it communicates with the various fleet adapters to check which fleet is suitable for taking this task.</p>
 </li>
 <li>
-<p>It sends a request, to which fleet adapters respond by sending robot availability and statuses.</p>
+<p>It sends a request, to which fleet adapters respond by submitting their fleet robots' availability and statuses.</p>
 </li>
 <li>
 <p>RMF determines the best fleet for the task and responds to the winning bid, i.e. the fleet that is selected. The response contains navigation commands relevant to the delegated task.</p>
@@ -4496,11 +4496,12 @@ pip3 install fastapi uvicorn
 
 </code></pre>
 <p>Clone the  <a href="https://github.com/open-rmf/rmf_demos/tree/main/rmf_demos_fleet_adapter">rmf_demos_fleet_adapter</a>  repository.</p>
-<p>Users can use the template and only have to fill in <a href="https://github.com/open-rmf/fleet_adapter_template/blob/main/fleet_adapter_template/fleet_adapter_template/RobotClientAPI.py"><code>RobotClientAPI.py</code></a> to get rmf_fleet adapter running.</p>
+<p>Users can use the template and fill in the missing blocks of code in <a href="https://github.com/open-rmf/fleet_adapter_template/blob/main/fleet_adapter_template/fleet_adapter_template/RobotClientAPI.py"><code>RobotClientAPI.py</code></a> marked with <code># IMPLEMENT YOUR CODE HERE #</code>. This sets up the API between the fleet adapter and the user's robots.</p>
 <blockquote>
-<p>The code giving below serves as an example for RobotClientAPI.py implementation. Code can be found <a href="https://github.com/thedevmanek/rmf_demos/tree/main/rmf_demos_fleet_adapter/rmf_demos_fleet_adapter">here</a>.</p>
+<p>The code given below serves as an example for implementing your own fleet adapter using <code>RobotClientAPI.py</code>.</p>
 </blockquote>
-<h2 id="understanding-configyaml-file"><a class="header" href="#understanding-configyaml-file">Understanding <code>config.yaml</code> file</a></h2>
+<h2 id="update-the-configyaml-file"><a class="header" href="#update-the-configyaml-file">Update the <code>config.yaml</code> file</a></h2>
+<p>The <code>config.yaml</code> file contains important parameters for setting up the fleet adapter. Users should start by updating these configurations describing their fleet robots.</p>
 <pre><code class="language-yaml"># FLEET CONFIG =================================================================
 # RMF Fleet parameters
 
@@ -4567,16 +4568,16 @@ reference_coordinates:
 </code></pre>
 <ul>
 <li>
-<p><code>rmf_fleet</code> information about the fleet and the bots in the fleet.</p>
+<p><code>rmf_fleet</code> important fleet parameters including vehicle traits, task capabilities and user information for connecting to the fleet manager.</p>
 </li>
 <li>
-<p><code>fleet_manager</code> prefix, username and password</p>
+<p><code>fleet_manager</code> the prefix, user and password fields that can be configured to suit your chosen API. These parameters will be brought into <code>RobotClientAPI.py</code> for you to set up connection with your fleet manager/robots. </p>
 </li>
 <li>
 <p><code>limits</code> maximum values for linear and angular accelerations and velocities.</p>
 </li>
 <li>
-<p><code>profile</code> footprint and vicinity.</p>
+<p><code>profile</code> radius of the footprint and personal vicinity of the vehicles in this fleet.</p>
 </li>
 <li>
 <p><code>reversible</code> a flag that can enable/disable reverse traversal in the robot.</p>
@@ -4585,47 +4586,45 @@ reference_coordinates:
 <p><code>battery_system</code> information about the battery</p>
 </li>
 <li>
-<p><code>recharge_threshold</code> sets a value for minimum charge below which the robot cannot operate.</p>
+<p><code>recharge_threshold</code> sets a value for minimum charge below which the robot must return to its charger.</p>
 </li>
 <li>
-<p><code>recharge_soc</code> the maximum level to which robots should be charged.</p>
+<p><code>recharge_soc</code> the fraction of total battery capacity to which the robot should be charged.</p>
 </li>
 <li>
-<p><code>task_capabilities</code> the capabilities of the robot</p>
+<p><code>task_capabilities</code> the tasks that the robot can perform between <code>loop</code>, <code>delivery</code> and <code>clean</code></p>
 </li>
 <li>
-<p><code>finishing_request</code> can be set to <code>park</code>, <code>charge</code> or <code>nothing</code></p>
+<p><code>finishing_request</code> what the robot should do when it finishes its task, can be set to <code>park</code>, <code>charge</code> or <code>nothing</code></p>
 </li>
 <li>
-<p><code>robots</code> information about all the types of robots in this case there is only one robot i.e. delivery bot</p>
+<p><code>robots</code> information about individual fleet robots</p>
 </li>
 <li>
-<p><code>tinyRobot1</code> will have all the information required by the bot.</p>
+<p><code>tinyRobot1</code> name of the robot.</p>
+</li>
+<li>
+<pre><code>
+</code></pre>
 </li>
 <li>
 <p><code>max_delay</code> seconds before interruption occurs and replanning happens</p>
 </li>
 <li>
-<p><code>robot_state_update_frequency</code> how frequently should robot update the fleet</p>
+<p><code>robot_state_update_frequency</code> how frequently should the robot update the fleet</p>
 </li>
 <li>
-<p><code>map_name</code> name of the map</p>
+<p><code>start</code> specify the starting map name, initial waypoint (x, y) and orientation (in radians) of the robot</p>
 </li>
 <li>
-<p><code>waypoint</code> target location</p>
+<p><code>charger</code> waypoint name of the robot's charging point</p>
 </li>
 <li>
-<p><code>orientation</code> orientation in radians</p>
-</li>
-<li>
-<p><code>charger</code> location of the charger</p>
-</li>
-<li>
-<p><code>reference_coordinates</code> The robot and the RMF may use different coordinate system the <code>reference_coordinates</code> help in correcting them.</p>
+<p><code>reference_coordinates</code> if the fleet robots are not operating in the same coordinate system as RMF, you can provide two sets of (x, y) coordinates that correspond to the same locations in each system. This helps with estimating coordinate transformations from one frame to another. A minimum of 4 matching waypoints is recommended. Note: this is not being implemented in <code>rmf_demos_fleet_adapter</code> as the demos robots and RMF are using the same coordinate system. </p>
 </li>
 </ul>
 <h2 id="robotclientapipy"><a class="header" href="#robotclientapipy">RobotClientAPI.py</a></h2>
-<p>Users can start by filling in the appropriate API inside <a href="https://github.com/open-rmf/rmf_demos/blob/main/rmf_demos_fleet_adapter/rmf_demos_fleet_adapter/RobotClientAPI.py#L28"><code>RobotClientAPI.py</code></a>, which will be used by the <code>RobotCommandHandle</code> to make calls to the fleet robots. For example, if your robot uses REST API to interface with the fleet adapter, you will need to make HTTP request calls to the appropriate endpoints within these functions.</p>
+<p>Users can fill in the appropriate API inside <a href="https://github.com/open-rmf/fleet_adapter_template/blob/main/fleet_adapter_template/fleet_adapter_template/RobotClientAPI.py"><code>RobotClientAPI.py</code></a>, which will be used by the <code>RobotCommandHandle</code> to make calls to the fleet robots. For example, if your robot uses REST API to interface with the fleet adapter, you will need to make HTTP request calls to the appropriate endpoints within these functions.</p>
 <pre><code class="language-python">
 import requests
 from urllib.error import HTTPError
@@ -4652,7 +4651,7 @@ class RobotAPI:
         return True
 
 </code></pre>
-<p><a href="https://github.com/open-rmf/rmf_demos/blob/main/rmf_demos_fleet_adapter/rmf_demos_fleet_adapter/RobotClientAPI.py#L39"><code>check_connection</code></a> will check if the robot is responding.</p>
+<p><a href="https://github.com/open-rmf/rmf_demos/blob/main/rmf_demos_fleet_adapter/rmf_demos_fleet_adapter/RobotClientAPI.py#L39"><code>check_connection</code></a> will check if connection to the robot was successful</p>
 <pre><code class="language-python">
     def position(self, robot_name: str):
         ''' Return [x, y, theta] expressed in the robot's coordinate frame or
@@ -4681,8 +4680,7 @@ class RobotAPI:
         return None
 
 </code></pre>
-<p><a href="https://github.com/open-rmf/rmf_demos/blob/main/rmf_demos_fleet_adapter/rmf_demos_fleet_adapter/RobotClientAPI.py#L45"><code>position</code></a> function does the job returning the position of the robot in following format in robot's coordinate frame</p>
-<p><code>[x, y, theta]</code></p>
+<p><a href="https://github.com/open-rmf/rmf_demos/blob/main/rmf_demos_fleet_adapter/rmf_demos_fleet_adapter/RobotClientAPI.py#L45"><code>position</code></a> function returns the <code>[x, y, theta]</code> position of the robot in its coordinate frame</p>
 <pre><code class="language-python">
     def navigate(self,
                  robot_name: str,
@@ -4757,7 +4755,7 @@ class RobotAPI:
         return False
 
 </code></pre>
-<p><a href="https://github.com/open-rmf/rmf_demos/blob/main/rmf_demos_fleet_adapter/rmf_demos_fleet_adapter/RobotClientAPI.py#L99"><code>start_process</code></a> function will send a POST request to the robot and will ask it to perform the task for example load/unload for delivery bot.<a href="https://github.com/open-rmf/rmf_demos/blob/main/rmf_demos_fleet_adapter/rmf_demos_fleet_adapter/RobotClientAPI.py#L123"><code>stop</code></a> command will simply check if the robot has stopped.</p>
+<p><a href="https://github.com/open-rmf/rmf_demos/blob/main/rmf_demos_fleet_adapter/rmf_demos_fleet_adapter/RobotClientAPI.py#L99"><code>start_process</code></a> sends a POST request to the robot asking it to perform a task. <a href="https://github.com/open-rmf/rmf_demos/blob/main/rmf_demos_fleet_adapter/rmf_demos_fleet_adapter/RobotClientAPI.py#L123"><code>stop</code></a> command tells the robot to stop moving.</p>
 <pre><code class="language-python">
     def navigation_remaining_duration(self, robot_name: str):
         ''' Return the number of seconds remaining for the robot to reach its
@@ -4794,7 +4792,7 @@ class RobotAPI:
 </code></pre>
 <ul>
 <li>
-<p><code>navigation_remaining_duration</code> will return remaining duration</p>
+<p><code>navigation_remaining_duration</code> will return the remaining duration for the robot to complete its current navigation</p>
 </li>
 <li>
 <p><code>process_completed</code> checks if the robot has completed its navigation using the <code>navigation_completed</code> function.</p>
