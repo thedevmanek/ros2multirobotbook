@@ -4458,7 +4458,7 @@ Furthermore, each robot's position will be updated live as the robots are moving
 <p>There are four <strong>Full Control</strong> fleets in our demo simulation, each with their own fleet-specific parameters. To better consolidate and set up these configurations upon initializing the fleet, they are stored in a <a href="https://github.com/open-rmf/rmf_demos/blob/main/rmf_demos/config/office/tinyRobot_config.yaml"><code>config.yaml</code></a> file. Paths to the configuration and navigation graph files are required when running the fleet adapter and manager. General fleet settings and capabilities are defined under the <code>rmf_fleet</code> section.</p>
 <p>The config file also takes care of robot-specific parameters within the fleet, such as the number of robots in the fleet, each of their names and their starting waypoints. For example, the <code>tinyRobot</code> fleet in Office demo world has two robots, so we append the configurations for each robot to the <code>robots</code> section in the config file.</p>
 <p>For users who are operating their robots in a different coordinate frame from RMF, the <code>reference_coordinate</code> section in the config file helps to perform any necessary transformations. Do note that RMF and the slotcar simulation robots share the same coordinate frame, so this transformation is not implemented in the demos fleet adapter.</p>
-<footer id="open-on-gh">Found a bug? <a href="https://github.com/osrf/ros2multirobotbook/edit/main/src/integration_fleets.md">Edit this page on GitHub.</a></footer><div style="break-before: page; page-break-before: always;"></div><h1 id="fleet-adapter-tutorial"><a class="header" href="#fleet-adapter-tutorial">Fleet Adapter Tutorial</a></h1>
+<footer id="open-on-gh">Found a bug? <a href="https://github.com/osrf/ros2multirobotbook/edit/main/src/integration_fleets.md">Edit this page on GitHub.</a></footer><div style="break-before: page; page-break-before: always;"></div><h1 id="fleet-adapter-tutorialpython"><a class="header" href="#fleet-adapter-tutorialpython">Fleet Adapter Tutorial(Python)</a></h1>
 <p><code>fleet_adapter</code> acts as a bridge between the robots and the core RMF system.</p>
 <p>Its responsibilities include but are not limited to:</p>
 <ul>
@@ -4488,14 +4488,14 @@ Furthermore, each robot's position will be updated live as the robots are moving
 </li>
 </ul>
 <blockquote>
-<p>The tutorial provided below is based on the <a href="https://github.com/open-rmf/rmf_demos/tree/main/rmf_demos_fleet_adapter">rmf_demos_fleet_adapter</a> implemented in the <a href="https://github.com/open-rmf/rmf_demos">rmf_demos</a> repository. This specific implementation uses REST API as an interface between the fleet adapter and fleet manager. You may choose to use other APIs for your own integration.</p>
+<p>The tutorial provided below is based on the <a href="https://github.com/open-rmf/rmf_demos/tree/main/rmf_demos_fleet_adapter">rmf_demos_fleet_adapter</a> implemented in the <a href="https://github.com/open-rmf/rmf_demos">rmf_demos</a> repository. This specific implementation is written in Python and uses REST API as an interface between the fleet adapter and fleet manager.You may choose to use other APIs for your own integration.</p>
 </blockquote>
 <h2 id="fetch-dependencies"><a class="header" href="#fetch-dependencies">Fetch dependencies</a></h2>
 <pre><code class="language-bash">
 pip3 install fastapi uvicorn
 
 </code></pre>
-<p>Clone the  <a href="https://github.com/open-rmf/rmf_demos/tree/main/rmf_demos_fleet_adapter">rmf_demos_fleet_adapter</a>  repository.</p>
+<p>Clone the <a href="https://github.com/open-rmf/rmf_demos/tree/main/rmf_demos_fleet_adapter">rmf_demos_fleet_adapter</a> repository.</p>
 <p>Users can use the template and fill in the missing blocks of code in <a href="https://github.com/open-rmf/fleet_adapter_template/blob/main/fleet_adapter_template/fleet_adapter_template/RobotClientAPI.py"><code>RobotClientAPI.py</code></a> marked with <code># IMPLEMENT YOUR CODE HERE #</code>. This sets up the API between the fleet adapter and the user's robots.</p>
 <blockquote>
 <p>The code given below serves as an example for implementing your own fleet adapter using <code>RobotClientAPI.py</code>.</p>
@@ -4572,21 +4572,15 @@ robots:
         waypoint: &quot;tinyRobot2_charger&quot;
 
 reference_coordinates:
-  rmf: [[20.33, -3.156],
-        [8.908, -2.57],
-        [13.02, -3.601],
-        [21.93, -4.124]]
-  robot: [[59, 399],
-        [57, 172],
-        [68, 251],
-        [75, 429]]
+  rmf: [[20.33, -3.156], [8.908, -2.57], [13.02, -3.601], [21.93, -4.124]]
+  robot: [[59, 399], [57, 172], [68, 251], [75, 429]]
 </code></pre>
 <ul>
 <li>
 <p><code>rmf_fleet</code> important fleet parameters including vehicle traits, task capabilities and user information for connecting to the fleet manager.</p>
 </li>
 <li>
-<p><code>fleet_manager</code> the prefix, user and password fields that can be configured to suit your chosen API. These parameters will be brought into <code>RobotClientAPI.py</code> for you to set up connection with your fleet manager/robots. </p>
+<p><code>fleet_manager</code> the prefix, user and password fields that can be configured to suit your chosen API. These parameters will be brought into <code>RobotClientAPI.py</code> for you to set up connection with your fleet manager/robots.</p>
 </li>
 <li>
 <p><code>limits</code> maximum values for linear and angular accelerations and velocities.</p>
@@ -4619,10 +4613,6 @@ reference_coordinates:
 <p><code>tinyRobot1,tinyRobot2</code> name of the robot.</p>
 </li>
 <li>
-<pre><code>
-</code></pre>
-</li>
-<li>
 <p><code>max_delay</code> seconds before interruption occurs and replanning happens</p>
 </li>
 <li>
@@ -4635,7 +4625,7 @@ reference_coordinates:
 <p><code>charger</code> waypoint name of the robot's charging point</p>
 </li>
 <li>
-<p><code>reference_coordinates</code> if the fleet robots are not operating in the same coordinate system as RMF, you can provide two sets of (x, y) coordinates that correspond to the same locations in each system. This helps with estimating coordinate transformations from one frame to another. A minimum of 4 matching waypoints is recommended. Note: this is not being implemented in <code>rmf_demos_fleet_adapter</code> as the demos robots and RMF are using the same coordinate system. </p>
+<p><code>reference_coordinates</code> if the fleet robots are not operating in the same coordinate system as RMF, you can provide two sets of (x, y) coordinates that correspond to the same locations in each system. This helps with estimating coordinate transformations from one frame to another. A minimum of 4 matching waypoints is recommended. Note: this is not being implemented in <code>rmf_demos_fleet_adapter</code> as the demos robots and RMF are using the same coordinate system.</p>
 </li>
 </ul>
 <h2 id="robotclientapipy"><a class="header" href="#robotclientapipy">RobotClientAPI.py</a></h2>
@@ -4794,7 +4784,7 @@ class RobotAPI:
         ''' Return True if the robot has successfully completed its previous
             process request. Else False.'''
         return self.navigation_completed(robot_name)
-        
+
     def battery_soc(self, robot_name: str):
         ''' Return the state of charge of the robot as a value between 0.0
             and 1.0. Else return None if any errors are encountered'''
