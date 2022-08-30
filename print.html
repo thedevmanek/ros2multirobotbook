@@ -4458,7 +4458,7 @@ Furthermore, each robot's position will be updated live as the robots are moving
 <p>There are four <strong>Full Control</strong> fleets in our demo simulation, each with their own fleet-specific parameters. To better consolidate and set up these configurations upon initializing the fleet, they are stored in a <a href="https://github.com/open-rmf/rmf_demos/blob/main/rmf_demos/config/office/tinyRobot_config.yaml"><code>config.yaml</code></a> file. Paths to the configuration and navigation graph files are required when running the fleet adapter and manager. General fleet settings and capabilities are defined under the <code>rmf_fleet</code> section.</p>
 <p>The config file also takes care of robot-specific parameters within the fleet, such as the number of robots in the fleet, each of their names and their starting waypoints. For example, the <code>tinyRobot</code> fleet in Office demo world has two robots, so we append the configurations for each robot to the <code>robots</code> section in the config file.</p>
 <p>For users who are operating their robots in a different coordinate frame from RMF, the <code>reference_coordinate</code> section in the config file helps to perform any necessary transformations. Do note that RMF and the slotcar simulation robots share the same coordinate frame, so this transformation is not implemented in the demos fleet adapter.</p>
-<footer id="open-on-gh">Found a bug? <a href="https://github.com/osrf/ros2multirobotbook/edit/main/src/integration_fleets.md">Edit this page on GitHub.</a></footer><div style="break-before: page; page-break-before: always;"></div><h1 id="fleet-adapter-tutorialpython"><a class="header" href="#fleet-adapter-tutorialpython">Fleet Adapter Tutorial(Python)</a></h1>
+<footer id="open-on-gh">Found a bug? <a href="https://github.com/osrf/ros2multirobotbook/edit/main/src/integration_fleets.md">Edit this page on GitHub.</a></footer><div style="break-before: page; page-break-before: always;"></div><h1 id="fleet-adapter-tutorial-python"><a class="header" href="#fleet-adapter-tutorial-python">Fleet Adapter Tutorial (Python)</a></h1>
 <p><code>fleet_adapter</code> acts as a bridge between the robots and the core RMF system.</p>
 <p>Its responsibilities include but are not limited to:</p>
 <ul>
@@ -4610,7 +4610,7 @@ reference_coordinates:
 <p><code>robots</code> information about individual fleet robots</p>
 </li>
 <li>
-<p><code>tinyRobot1,tinyRobot2</code> name of the robot.</p>
+<p><code>tinyRobot1</code>, <code>tinyRobot2</code> name of the robot.</p>
 </li>
 <li>
 <p><code>max_delay</code> seconds before interruption occurs and replanning happens</p>
