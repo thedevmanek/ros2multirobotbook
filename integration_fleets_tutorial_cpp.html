@@ -426,6 +426,9 @@ This callback function will get triggered when the RobotUpdateHandle is ready to
 <p><code>add_performable_action</code>
 Allow this fleet adapter to execute a PerformAction activity of specified
 category which may be present in sequence event.</p>
+<blockquote>
+<p>Note:- It's intentionally left up to the system integrators to decide how to structure your implementation when the user might receive different types of perform_action requests.</p>
+</blockquote>
 <ul>
 <li><code>category</code>
 A string that categorizes the action. This value should be used when
