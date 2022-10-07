@@ -1028,6 +1028,308 @@ The predefined name of the docking procedure to use.</p>
 Trigger this callback when the docking is finished.</p>
 </li>
 </ul>
+<h2 id="stepst-to-use-rmf_fleet_adapter"><a class="header" href="#stepst-to-use-rmf_fleet_adapter">Stepst to use rmf_fleet_adapter:</a></h2>
+<h3 id="step-1"><a class="header" href="#step-1">Step 1</a></h3>
+<p>Make an Adapter instance using</p>
+<pre><code class="language-cpp">    static std::shared_ptr&lt;Adapter&gt; make(
+    const std::string&amp; node_name,
+    const rclcpp::NodeOptions&amp; node_options = rclcpp::NodeOptions(),
+    std::optional&lt;rmf_traffic::Duration&gt; discovery_timeout = std::nullopt);
+</code></pre>
+<h3 id="step-2"><a class="header" href="#step-2">Step 2</a></h3>
+<p>Initializing the fleet.</p>
+<ul>
+<li>First add fleet to adapter</li>
+</ul>
+<pre><code class="language-cpp">  _fleet_handle = adapter-&gt;add_fleet(
+    _fleet_name, *_traits, *_graph, _server_uri);
+</code></pre>
+<ul>
+<li>Setting up LaneRequests by setting up some publishers and subscriptions</li>
+</ul>
+<pre><code class="language-cpp"> _closed_lanes_pub =
+    node-&gt;create_publisher&lt;rmf_fleet_msgs::msg::ClosedLanes&gt;(
+    rmf_fleet_adapter::ClosedLaneTopicName,
+    rclcpp::SystemDefaultsQoS().reliable().keep_last(1).transient_local());
+
+  // Create subscription to lane closure requests
+  _lane_closure_request_sub =
+    node-&gt;create_subscription&lt;rmf_fleet_msgs::msg::LaneRequest&gt;(
+    rmf_fleet_adapter::LaneClosureRequestTopicName,
+    rclcpp::SystemDefaultsQoS(),
+    [this](
+      rmf_fleet_msgs::msg::LaneRequest::UniquePtr request_msg)
+    {
+
+      if (request_msg-&gt;fleet_name != this-&gt;_fleet_name &amp;&amp;
+      !request_msg-&gt;fleet_name.empty())
+        return;
+
+      this-&gt;_fleet_handle-&gt;open_lanes(request_msg-&gt;open_lanes);
+      this-&gt;_fleet_handle-&gt;close_lanes(request_msg-&gt;close_lanes);
+
+      std::unordered_set&lt;std::size_t&gt; newly_closed_lanes;
+      for (const auto&amp; l : request_msg-&gt;close_lanes)
+      {
+        if (_closed_lanes.count(l) == 0)
+          newly_closed_lanes.insert(l);
+
+        _closed_lanes.insert(l);
+      }
+
+      for (const auto&amp; l : request_msg-&gt;open_lanes)
+        _closed_lanes.erase(l);
+
+      for (auto&amp; [_, robot] : this-&gt;_robots)
+      {
+        robot-&gt;newly_closed_lanes(newly_closed_lanes);
+      }
+
+      rmf_fleet_msgs::msg::ClosedLanes state_msg;
+      state_msg.fleet_name = this-&gt;_fleet_name;
+      state_msg.closed_lanes.insert(
+        state_msg.closed_lanes.begin(),
+        _closed_lanes.begin(),
+        _closed_lanes.end());
+
+      _closed_lanes_pub-&gt;publish(state_msg);
+    });
+</code></pre>
+<ul>
+<li>Initializing some parameters for the fleet (battery, mechanical system, power, etc)</li>
+</ul>
+<pre><code class="language-cpp">
+  // Set the fleet state topic publish period
+  const double fleet_state_frequency =
+    rmf_fleet[&quot;publish_fleet_state&quot;].as&lt;double&gt;();
+  _fleet_handle-&gt;fleet_state_topic_publish_period(
+    rmf_traffic::time::from_seconds(1.0/fleet_state_frequency));
+
+  // Set up parameters required for task planner
+  // Battery system
+  const YAML::Node battery = rmf_fleet[&quot;battery_system&quot;];
+  const double voltage = battery[&quot;voltage&quot;].as&lt;double&gt;();
+  const double capacity = battery[&quot;capacity&quot;].as&lt;double&gt;();
+  const double charging_current = battery[&quot;charging_current&quot;].as&lt;double&gt;();
+
+  auto battery_system_optional = rmf_battery::agv::BatterySystem::make(
+    voltage, capacity, charging_current);
+  auto battery_system = std::make_shared&lt;rmf_battery::agv::BatterySystem&gt;(
+    *battery_system_optional);
+
+  // Mechanical system
+  const YAML::Node mechanical = rmf_fleet[&quot;mechanical_system&quot;];
+  const double mass = mechanical[&quot;mass&quot;].as&lt;double&gt;();
+  const double moment_of_inertia = mechanical[&quot;moment_of_inertia&quot;].as&lt;double&gt;();
+  const double friction = mechanical[&quot;friction_coefficient&quot;].as&lt;double&gt;();
+
+  auto mechanical_system_optional = rmf_battery::agv::MechanicalSystem::make(
+    mass, moment_of_inertia, friction);
+  rmf_battery::agv::MechanicalSystem&amp; mechanical_system =
+    *mechanical_system_optional;
+
+  std::shared_ptr&lt;rmf_battery::agv::SimpleMotionPowerSink&gt; motion_sink =
+    std::make_shared&lt;rmf_battery::agv::SimpleMotionPowerSink&gt;(
+    *battery_system, mechanical_system);
+
+  // Ambient power system
+  const YAML::Node ambient_system = rmf_fleet[&quot;ambient_system&quot;];
+  const double ambient_power_drain = ambient_system[&quot;power&quot;].as&lt;double&gt;();
+  auto ambient_power_system = rmf_battery::agv::PowerSystem::make(
+    ambient_power_drain);
+  if (!ambient_power_system)
+  {
+    RCLCPP_ERROR(
+      node-&gt;get_logger(),
+      &quot;Invalid values supplied for ambient power system&quot;);
+
+    return false;
+  }
+  std::shared_ptr&lt;rmf_battery::agv::SimpleDevicePowerSink&gt; ambient_sink =
+    std::make_shared&lt;rmf_battery::agv::SimpleDevicePowerSink&gt;(
+    *battery_system, *ambient_power_system);
+
+  // Tool power system
+  const YAML::Node tool_system = rmf_fleet[&quot;tool_system&quot;];
+  const double tool_power_drain = ambient_system[&quot;power&quot;].as&lt;double&gt;();
+  auto tool_power_system = rmf_battery::agv::PowerSystem::make(
+    tool_power_drain);
+  if (!tool_power_system)
+  {
+    RCLCPP_ERROR(
+      node-&gt;get_logger(),
+      &quot;Invalid values supplied for tool power system&quot;);
+
+    return false;
+  }
+  std::shared_ptr&lt;rmf_battery::agv::SimpleDevicePowerSink&gt; tool_sink =
+    std::make_shared&lt;rmf_battery::agv::SimpleDevicePowerSink&gt;(
+    *battery_system, *tool_power_system);
+
+  // Drain battery
+  const bool drain_battery = rmf_fleet[&quot;account_for_battery_drain&quot;].as&lt;bool&gt;();
+  // Recharge threshold
+  const double recharge_threshold =
+    rmf_fleet[&quot;recharge_threshold&quot;].as&lt;double&gt;();
+  // Recharge state of charge
+  const double recharge_soc = rmf_fleet[&quot;recharge_soc&quot;].as&lt;double&gt;();
+
+</code></pre>
+<ul>
+<li>Setting the fleet's finishing request</li>
+</ul>
+<pre><code class="language-cpp">
+ // Finishing tasks
+  const YAML::Node task_capabilities = rmf_fleet[&quot;task_capabilities&quot;];
+  const std::string finishing_request_string =
+    task_capabilities[&quot;finishing_request&quot;].as&lt;std::string&gt;();
+  rmf_task::ConstRequestFactoryPtr finishing_request = nullptr;
+  if (finishing_request_string == &quot;charge&quot;)
+  {
+    finishing_request =
+      std::make_shared&lt;rmf_task::requests::ChargeBatteryFactory&gt;();
+    RCLCPP_INFO(
+      node-&gt;get_logger(),
+      &quot;Fleet is configured to perform ChargeBattery as finishing request&quot;);
+  }
+  else if (finishing_request_string == &quot;park&quot;)
+  {
+    finishing_request =
+      std::make_shared&lt;rmf_task::requests::ParkRobotFactory&gt;();
+    RCLCPP_INFO(
+      node-&gt;get_logger(),
+      &quot;Fleet is configured to perform ParkRobot as finishing request&quot;);
+  }
+  else if (finishing_request_string == &quot;nothing&quot;)
+  {
+    RCLCPP_INFO(
+      node-&gt;get_logger(),
+      &quot;Fleet is not configured to perform any finishing request&quot;);
+  }
+  else
+  {
+    RCLCPP_WARN(
+      node-&gt;get_logger(),
+      &quot;Provided finishing request [%s] is unsupported. The valid &quot;
+      &quot;finishing requests are [charge, park, nothing]. The task planner will &quot;
+      &quot; default to [nothing].&quot;,
+      finishing_request_string.c_str());
+  }
+
+</code></pre>
+<ul>
+<li>Adding task capabilities and performable actions to the fleet</li>
+</ul>
+<pre><code class="language-cpp"> // Set task planner params
+  if (!_fleet_handle-&gt;set_task_planner_params(
+      battery_system,
+      motion_sink,
+      ambient_sink,
+      tool_sink,
+      recharge_threshold,
+      recharge_soc,
+      drain_battery,
+      finishing_request))
+  {
+    RCLCPP_ERROR(
+      node-&gt;get_logger(),
+      &quot;Failed to initialize task planner parameters&quot;);
+
+    return false;
+  }
+
+  // Currently accepting any tasks as long as they are in the config
+  const auto consider =
+    [](const nlohmann::json&amp; description,
+      rmf_fleet_adapter::agv::FleetUpdateHandle::Confirmation&amp; confirm)
+    {
+      confirm.accept();
+    };
+
+  const bool perform_loop = task_capabilities[&quot;loop&quot;].as&lt;bool&gt;();
+  if (perform_loop)
+  {
+    _fleet_handle-&gt;consider_patrol_requests(consider);
+  }
+
+  const bool perform_delivery = task_capabilities[&quot;delivery&quot;].as&lt;bool&gt;();
+  if (perform_delivery)
+  {
+    _fleet_handle-&gt;consider_delivery_requests(
+      consider, consider);
+  }
+
+  const bool perform_cleaning = task_capabilities[&quot;clean&quot;].as&lt;bool&gt;();
+  if (perform_cleaning)
+  {
+    _fleet_handle-&gt;consider_cleaning_requests(consider);
+  }
+
+  // Currently accepting any actions as long as they are in the config
+  if (task_capabilities[&quot;action&quot;])
+  {
+    std::vector&lt;std::string&gt; action_strings =
+      task_capabilities[&quot;action&quot;].as&lt;std::vector&lt;std::string&gt;&gt;();
+    for (const auto&amp; action : action_strings)
+    {
+      _fleet_handle-&gt;add_performable_action(action, consider);
+    }
+  }
+</code></pre>
+<ul>
+<li>Calculate the Planner::StartSet for each robot using compute_plan_starts with the robot's starting pose</li>
+</ul>
+<pre><code class="language-cpp">// Use Start or compute plan starts
+  if (std::holds_alternative&lt;Planner::Start&gt;(pose))
+  {
+    RCLCPP_INFO(_pimpl-&gt;_adapter-&gt;node()-&gt;get_logger(),
+      &quot;Using provided Planner::Start to initialize starts &quot;
+      &quot; for robot %s.&quot;,
+      robot_name.c_str());
+    const auto p = std::get&lt;Planner::Start&gt;(pose);
+    starts.push_back(p);
+  }
+  else if (std::holds_alternative&lt;Eigen::Vector3d&gt;(pose))
+  {
+    RCLCPP_INFO(_pimpl-&gt;_adapter-&gt;node()-&gt;get_logger(),
+      &quot;Running compute_plan_starts for robot %s.&quot;,
+      robot_name.c_str());
+    const auto p = std::get&lt;Eigen::Vector3d&gt;(pose);
+
+    RCLCPP_INFO(_pimpl-&gt;_adapter-&gt;node()-&gt;get_logger(),
+      &quot;Robot %s pose is [%.2f, %.2f, %.2f]&quot;,
+      robot_name.c_str(),
+      p.x(), p.y(), p.z());
+
+    // Use compute plan starts to estimate the start
+    starts = rmf_traffic::agv::compute_plan_starts(
+      *_pimpl-&gt;_graph, map_name, {p.x(), p.y(), p.z()},
+      rmf_traffic_ros2::convert(_pimpl-&gt;_adapter-&gt;node()-&gt;now()));
+  }
+
+  if (starts.empty())
+  {
+    RCLCPP_ERROR(_pimpl-&gt;_adapter-&gt;node()-&gt;get_logger(),
+      &quot;Unable to determine StartSet for %s&quot;, robot_name.c_str());
+
+    return false;
+  }
+</code></pre>
+<ul>
+<li>Add each robot to the fleet using FleetUpdateHandle::add_robot()</li>
+</ul>
+<pre><code class="language-cpp">    _pimpl-&gt;_fleet_handle-&gt;add_robot(
+      command, robot_name, _pimpl-&gt;_traits-&gt;profile(), starts,
+      [w = this-&gt;weak_from_this(), command, robot_name = std::move(robot_name)](
+        const RobotUpdateHandlePtr&amp; updater)
+      {
+        const auto self = w.lock();
+        if (!self)
+          return;
+        command-&gt;set_updater(updater);
+        self-&gt;_pimpl-&gt;_robots[robot_name] = command;
+      });
+</code></pre>
 <footer id="open-on-gh">Found a bug? <a href="https://github.com/osrf/ros2multirobotbook/edit/main/src/integration_fleets_tutorial_cpp.md">Edit this page on GitHub.</a></footer>
                     </main>
 
