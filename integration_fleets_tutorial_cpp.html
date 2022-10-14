@@ -165,9 +165,9 @@ The recharge_threshold is used in a similar manner during task allocation. When 
 <h3 id="step-1"><a class="header" href="#step-1">Step 1</a></h3>
 <p>Make an Adapter instance using</p>
 <pre><code class="language-cpp">static std::shared_ptr&lt;Adapter&gt; make(
-const std::string&amp; node_name,
-const rclcpp::NodeOptions&amp; node_options = rclcpp::NodeOptions(),
-std::optional&lt;rmf_traffic::Duration&gt; discovery_timeout = std::nullopt);
+    const std::string&amp; node_name,
+    const rclcpp::NodeOptions&amp; node_options = rclcpp::NodeOptions(),
+    std::optional&lt;rmf_traffic::Duration&gt; discovery_timeout = std::nullopt);
 </code></pre>
 <h3 id="step-2"><a class="header" href="#step-2">Step 2</a></h3>
 <p>Initializing the fleet.</p>
