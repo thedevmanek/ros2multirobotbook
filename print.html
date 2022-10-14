@@ -4820,9 +4820,6 @@ For more information about various functions please visit the hyperlinks in the 
 <h2 id="adapter"><a class="header" href="#adapter"><a href="https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/Adapter.hpp">Adapter</a></a></h2>
 <p>The <code>Adapter</code> class helps you to communicate your fleet with other core RMF systems. You may use the function <code>add_fleet</code> to register your fleet with RMF.</p>
 <h2 id="fleetupdatehandle"><a class="header" href="#fleetupdatehandle"><a href="https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/FleetUpdateHandle.hpp">FleetUpdateHandle</a></a></h2>
-<blockquote>
-<p>Currently there is no support for deleting the robot.</p>
-</blockquote>
 <p>The <code>FleetUpdateHandle</code> works as handler between the fleet adapter and RMF. It tells RMF what are the tasks, requests and actions that the fleet can accept. Users can use the <code>FleetUpdateHandle</code> to register their robots to the fleet using <code>add_robot</code>, as well as add task capabilities (e.g. delivery, patrol, cleaning) and performable actions so that RMF can delegate them to the appropriate fleets accordingly. More information can be found in the API documentation.</p>
 <h2 id="robotupdatehandle"><a class="header" href="#robotupdatehandle"><a href="https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/RobotUpdateHandle.hpp">RobotUpdateHandle</a></a></h2>
 <p>The <code>RobotUpdateHandle</code> contains important callbacks to keep RMF updated about the robot's status.</p>
