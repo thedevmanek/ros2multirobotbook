@@ -302,6 +302,9 @@ The fleet adapter will require a <code>Planner::StartSet</code> to start plannin
 <ul>
 <li>Add each robot to the fleet using <a href="https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/FleetUpdateHandle.hpp#L71-L76"><code>FleetUpdateHandle::add_robot</code></a></li>
 </ul>
+<blockquote>
+<p>Currently there is no support for deleting the robot.</p>
+</blockquote>
 <pre><code class="language-cpp">_fleet_handle-&gt;add_robot(
     command, robot_name, _traits-&gt;profile(), starts,
     [command](const RobotUpdateHandlePtr&amp; updater)
