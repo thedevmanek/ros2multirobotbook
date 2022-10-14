@@ -144,31 +144,30 @@
 For more information about various functions please visit the hyperlinks in the header files</p>
 </blockquote>
 <h2 id="adapter"><a class="header" href="#adapter"><a href="https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/Adapter.hpp">Adapter</a></a></h2>
-<p>The <code>Adapter</code> class provides functions using which new robot fleets can be added.The class provides two major functions one is <code>add_fleet</code> which allows the user to add a new fleet and second is <code>add_easy_traffic_light</code> which allows the user to add a easy traffic light system.</p>
+<p>The <code>Adapter</code> class helps you to communicate your fleet with other core RMF systems. You may use the function <code>add_fleet</code> to register your fleet with RMF.</p>
 <h2 id="fleetupdatehandle"><a class="header" href="#fleetupdatehandle"><a href="https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/FleetUpdateHandle.hpp">FleetUpdateHandle</a></a></h2>
 <blockquote>
-<p>Note:- It's intentionally left up to the system integrators to decide how to structure your implementation when the user might receive different types of perform_action requests.
+<p>Note: It's intentionally left up to the system integrators to decide how to structure your implementation when the user might receive different types of perform_action requests.
 Currently there is no support for deleting the robot.</p>
 </blockquote>
-<p>The Update Handle works as handler between the fleet robots and the fleetadapter.The work of the handler is to act
-<code>add_robot</code> allows user to add robot to the fleet.Users can use <code>FleetUpdateHandle</code> to allow the Adapter to consider requests like delivery,cleaning,patrol etc.More information is present in the API documentation.Users can also provide set of open or closed lanes.</p>
+<p>The <code>FleetUpdateHandle</code> works as handler between the fleet adapter and RMF. It tells RMF what are the tasks, requests and actions that the fleet can accept. Users can use the <code>FleetUpdateHandle</code> to register their robots to the fleet using <code>add_robot</code>, as well as add task capabilities (e.g. delivery, patrol, cleaning) and performable actions so that RMF can delegate them to the appropriate fleets accordingly. More information can be found in the API documentation.</p>
 <h3 id="information-regarding-charging-of-the-robot"><a class="header" href="#information-regarding-charging-of-the-robot">Information regarding charging of the robot</a></h3>
 <p>When the robot is idle, a timer periodically computes the estimated battery drain if the robot were to head back to the charger now. If the battery level after the estimated drain is within a safety factor applied to the recharge_threshold, the TaskManager will automatically begin a task to take the robot back to its charging station.
 The recharge_threshold is used in a similar manner during task allocation. When deciding the order of tasks performed, the TaskPlanner will estimate the battery level of the robot after performing a task A. If the estimate is below the recharge_threshold, it will then check if the robot can perform task A if it performed a recharge task before this. If this is the case then it will automatically include a recharge task before task A. If it still cannot perform task A even after recharging, it will discard the possibility of doing task A in that sequence.</p>
 <h2 id="robotupdatehandle"><a class="header" href="#robotupdatehandle"><a href="https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/RobotUpdateHandle.hpp">RobotUpdateHandle</a></a></h2>
-<p>The <code>RobotUpdateHandle</code> helps in sending updates to the robot.An instance of this class will be given everytime a new robot is added to the fleet.Users can use this instance of the class to send updates to RoMi-H about the robot's state.</p>
+<p>The <code>RobotUpdateHandle</code> contains important callbacks to keep RMF updated about the robot's status.</p>
 <h2 id="robotcommandhandle"><a class="header" href="#robotcommandhandle"><a href="https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/RobotCommandHandle.hpp">RobotCommandHandle</a></a></h2>
-<p>This class works as a bridge and acts as a handler for all the commands that need to be sent to the robot.</p>
+<p>This is an abstract class that users have to implement in order for their fleet adapters to receive commands from RMF successfully. Users should implement the functions <code>follow_new_path</code>, <code>stop</code> and <code>dock</code>, then fill in the internal logic accordingly to relay the navigation commands to their robot.</p>
 <blockquote>
 <p>Note:- The waypoints argument that will be given to the follow_new_path function of the RobotCommandHandle contains a list of <code>rmf_traffic::agv::Plan::Waypoint</code> objects that have a graph_index function.When that graph_index is non-null it can be passed to <code>Graph::get_waypoint</code> and then <code>Graph::Waypoint::get_map_name</code> can be called to check what the current map is for that waypoint. If there is a change in map name, then you robot should change its map.We don't provide an out-of-the-box hook for this because map switching logic is likely to vary too much between robots and deployments. For example, in a certain deployment you might need the robot to decompose a very large floor into multiple maps internally, but inside the RMF traffic system those multiple maps would all be part of one single map. In that case you'd need a dictionary of nav graph index -&gt; robot's internal map name.</p>
 </blockquote>
-<h2 id="stepst-to-use-rmf_fleet_adapter"><a class="header" href="#stepst-to-use-rmf_fleet_adapter">Stepst to use rmf_fleet_adapter:</a></h2>
+<h2 id="steps-to-use-rmf_fleet_adapter"><a class="header" href="#steps-to-use-rmf_fleet_adapter">Steps to use rmf_fleet_adapter:</a></h2>
 <h3 id="step-1"><a class="header" href="#step-1">Step 1</a></h3>
 <p>Make an Adapter instance using</p>
-<pre><code class="language-cpp">    static std::shared_ptr&lt;Adapter&gt; make(
-    const std::string&amp; node_name,
-    const rclcpp::NodeOptions&amp; node_options = rclcpp::NodeOptions(),
-    std::optional&lt;rmf_traffic::Duration&gt; discovery_timeout = std::nullopt);
+<pre><code class="language-cpp">static std::shared_ptr&lt;Adapter&gt; make(
+const std::string&amp; node_name,
+const rclcpp::NodeOptions&amp; node_options = rclcpp::NodeOptions(),
+std::optional&lt;rmf_traffic::Duration&gt; discovery_timeout = std::nullopt);
 </code></pre>
 <h3 id="step-2"><a class="header" href="#step-2">Step 2</a></h3>
 <p>Initializing the fleet.</p>
@@ -230,239 +229,54 @@ The recharge_threshold is used in a similar manner during task allocation. When 
     });
 </code></pre>
 <ul>
-<li>Initializing some parameters for the fleet (battery, mechanical system, power, etc)</li>
+<li>Setting important parameters for the task planner. Users can create the respective objects for these parameters and pass them to the fleet handle via <code>set_task_planner_param</code>.  The header files for these objects can be found in the <a href="https://github.com/open-rmf/rmf_battery/tree/main/rmf_battery/include/rmf_battery/agv"><code>rmf_battery</code></a> repository.
+For example, to set the battery system parameters:</li>
 </ul>
-<pre><code class="language-cpp">
-  // Set the fleet state topic publish period
-  const double fleet_state_frequency =
-    rmf_fleet[&quot;publish_fleet_state&quot;].as&lt;double&gt;();
-  _fleet_handle-&gt;fleet_state_topic_publish_period(
-    rmf_traffic::time::from_seconds(1.0/fleet_state_frequency));
-
-  // Set up parameters required for task planner
-  // Battery system
-  const YAML::Node battery = rmf_fleet[&quot;battery_system&quot;];
-  const double voltage = battery[&quot;voltage&quot;].as&lt;double&gt;();
-  const double capacity = battery[&quot;capacity&quot;].as&lt;double&gt;();
-  const double charging_current = battery[&quot;charging_current&quot;].as&lt;double&gt;();
-
-  auto battery_system_optional = rmf_battery::agv::BatterySystem::make(
+<pre><code class="language-cpp">auto battery_system_optional = rmf_battery::agv::BatterySystem::make(
     voltage, capacity, charging_current);
-  auto battery_system = std::make_shared&lt;rmf_battery::agv::BatterySystem&gt;(
+auto battery_system = std::make_shared&lt;rmf_battery::agv::BatterySystem&gt;(
     *battery_system_optional);
-
-  // Mechanical system
-  const YAML::Node mechanical = rmf_fleet[&quot;mechanical_system&quot;];
-  const double mass = mechanical[&quot;mass&quot;].as&lt;double&gt;();
-  const double moment_of_inertia = mechanical[&quot;moment_of_inertia&quot;].as&lt;double&gt;();
-  const double friction = mechanical[&quot;friction_coefficient&quot;].as&lt;double&gt;();
-
-  auto mechanical_system_optional = rmf_battery::agv::MechanicalSystem::make(
-    mass, moment_of_inertia, friction);
-  rmf_battery::agv::MechanicalSystem&amp; mechanical_system =
-    *mechanical_system_optional;
-
-  std::shared_ptr&lt;rmf_battery::agv::SimpleMotionPowerSink&gt; motion_sink =
-    std::make_shared&lt;rmf_battery::agv::SimpleMotionPowerSink&gt;(
-    *battery_system, mechanical_system);
-
-  // Ambient power system
-  const YAML::Node ambient_system = rmf_fleet[&quot;ambient_system&quot;];
-  const double ambient_power_drain = ambient_system[&quot;power&quot;].as&lt;double&gt;();
-  auto ambient_power_system = rmf_battery::agv::PowerSystem::make(
-    ambient_power_drain);
-  if (!ambient_power_system)
-  {
-    RCLCPP_ERROR(
-      node-&gt;get_logger(),
-      &quot;Invalid values supplied for ambient power system&quot;);
-
-    return false;
-  }
-  std::shared_ptr&lt;rmf_battery::agv::SimpleDevicePowerSink&gt; ambient_sink =
-    std::make_shared&lt;rmf_battery::agv::SimpleDevicePowerSink&gt;(
-    *battery_system, *ambient_power_system);
-
-  // Tool power system
-  const YAML::Node tool_system = rmf_fleet[&quot;tool_system&quot;];
-  const double tool_power_drain = ambient_system[&quot;power&quot;].as&lt;double&gt;();
-  auto tool_power_system = rmf_battery::agv::PowerSystem::make(
-    tool_power_drain);
-  if (!tool_power_system)
-  {
-    RCLCPP_ERROR(
-      node-&gt;get_logger(),
-      &quot;Invalid values supplied for tool power system&quot;);
-
-    return false;
-  }
-  std::shared_ptr&lt;rmf_battery::agv::SimpleDevicePowerSink&gt; tool_sink =
-    std::make_shared&lt;rmf_battery::agv::SimpleDevicePowerSink&gt;(
-    *battery_system, *tool_power_system);
-
-  // Drain battery
-  const bool drain_battery = rmf_fleet[&quot;account_for_battery_drain&quot;].as&lt;bool&gt;();
-  // Recharge threshold
-  const double recharge_threshold =
-    rmf_fleet[&quot;recharge_threshold&quot;].as&lt;double&gt;();
-  // Recharge state of charge
-  const double recharge_soc = rmf_fleet[&quot;recharge_soc&quot;].as&lt;double&gt;();
-
 </code></pre>
 <ul>
-<li>Setting the fleet's finishing request</li>
+<li>Setting the fleet's finishing request
+You may choose a finishing task for your fleet's robots between <code>park</code>, <code>charge</code> and <code>nothing</code>. You will need to create a <code>rmf_task::ConstRequestFactoryPtr</code> object and set them to the right finishing request.
+The header files for the finishing requests can be found <a href="https://github.com/open-rmf/rmf_task/tree/main/rmf_task/include/rmf_task/requests">here</a> in the <code>rmf_task</code> repository.</li>
 </ul>
-<pre><code class="language-cpp">
- // Finishing tasks
-  const YAML::Node task_capabilities = rmf_fleet[&quot;task_capabilities&quot;];
-  const std::string finishing_request_string =
-    task_capabilities[&quot;finishing_request&quot;].as&lt;std::string&gt;();
-  rmf_task::ConstRequestFactoryPtr finishing_request = nullptr;
-  if (finishing_request_string == &quot;charge&quot;)
-  {
-    finishing_request =
-      std::make_shared&lt;rmf_task::requests::ChargeBatteryFactory&gt;();
-    RCLCPP_INFO(
-      node-&gt;get_logger(),
-      &quot;Fleet is configured to perform ChargeBattery as finishing request&quot;);
-  }
-  else if (finishing_request_string == &quot;park&quot;)
-  {
-    finishing_request =
-      std::make_shared&lt;rmf_task::requests::ParkRobotFactory&gt;();
-    RCLCPP_INFO(
-      node-&gt;get_logger(),
-      &quot;Fleet is configured to perform ParkRobot as finishing request&quot;);
-  }
-  else if (finishing_request_string == &quot;nothing&quot;)
-  {
-    RCLCPP_INFO(
-      node-&gt;get_logger(),
-      &quot;Fleet is not configured to perform any finishing request&quot;);
-  }
-  else
-  {
-    RCLCPP_WARN(
-      node-&gt;get_logger(),
-      &quot;Provided finishing request [%s] is unsupported. The valid &quot;
-      &quot;finishing requests are [charge, park, nothing]. The task planner will &quot;
-      &quot; default to [nothing].&quot;,
-      finishing_request_string.c_str());
-  }
-
+<p>For example, to set the finishing request to <code>charge</code>:</p>
+<pre><code class="language-cpp">rmf_task::ConstRequestFactoryPtr finishing_request = nullptr;
+finishing_request = std::make_shared&lt;rmf_task::requests::ChargeBatteryFactory&gt;();
 </code></pre>
 <ul>
 <li>Adding task capabilities and performable actions to the fleet</li>
 </ul>
-<pre><code class="language-cpp"> // Set task planner params
-  if (!_fleet_handle-&gt;set_task_planner_params(
-      battery_system,
-      motion_sink,
-      ambient_sink,
-      tool_sink,
-      recharge_threshold,
-      recharge_soc,
-      drain_battery,
-      finishing_request))
-  {
-    RCLCPP_ERROR(
-      node-&gt;get_logger(),
-      &quot;Failed to initialize task planner parameters&quot;);
-
-    return false;
-  }
-
-  // Currently accepting any tasks as long as they are in the config
-  const auto consider =
+<p>Use the <code>FleetUpdateHandle</code> to add task capabilities and performable actions to your fleet. For example, if your fleet is able to carry out patrol tasks and teleop actions, you can add them as such:</p>
+<pre><code class="language-cpp">const auto consider =
     [](const nlohmann::json&amp; description,
       rmf_fleet_adapter::agv::FleetUpdateHandle::Confirmation&amp; confirm)
     {
       confirm.accept();
     };
-
-  const bool perform_loop = task_capabilities[&quot;loop&quot;].as&lt;bool&gt;();
-  if (perform_loop)
-  {
-    _fleet_handle-&gt;consider_patrol_requests(consider);
-  }
-
-  const bool perform_delivery = task_capabilities[&quot;delivery&quot;].as&lt;bool&gt;();
-  if (perform_delivery)
-  {
-    _fleet_handle-&gt;consider_delivery_requests(
-      consider, consider);
-  }
-
-  const bool perform_cleaning = task_capabilities[&quot;clean&quot;].as&lt;bool&gt;();
-  if (perform_cleaning)
-  {
-    _fleet_handle-&gt;consider_cleaning_requests(consider);
-  }
-
-  // Currently accepting any actions as long as they are in the config
-  if (task_capabilities[&quot;action&quot;])
-  {
-    std::vector&lt;std::string&gt; action_strings =
-      task_capabilities[&quot;action&quot;].as&lt;std::vector&lt;std::string&gt;&gt;();
-    for (const auto&amp; action : action_strings)
+_fleet_handle-&gt;consider_patrol_requests(consider);
+_fleet_handle-&gt;add_performable_action(&quot;teleop&quot;, consider);
+</code></pre>
+<h3 id="step-3"><a class="header" href="#step-3">Step 3</a></h3>
+<ul>
+<li>Compute <code>Planner::StartSet</code> for each robot
+The fleet adapter will require a <code>Planner::StartSet</code> to start planning for each robot. This object can be obtained via an <code>Eigen::Vector3d</code> of the robot's starting pose using <a href="https://github.com/open-rmf/rmf_traffic/blob/main/rmf_traffic/include/rmf_traffic/agv/Planner.hpp#L916-L923"><code>rmf_traffic::agv::compute_plan_starts</code></a>:</li>
+</ul>
+<pre><code class="language-cpp">starts = rmf_traffic::agv::compute_plan_starts(
+      *_graph, map_name, {p.x(), p.y(), p.z()},
+      rmf_traffic_ros2::convert(_adapter-&gt;node()-&gt;now()));
+</code></pre>
+<ul>
+<li>Add each robot to the fleet using <a href="https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/FleetUpdateHandle.hpp#L71-L76"><code>FleetUpdateHandle::add_robot</code></a></li>
+</ul>
+<pre><code class="language-cpp">_fleet_handle-&gt;add_robot(
+    command, robot_name, _traits-&gt;profile(), starts,
+    [command](const RobotUpdateHandlePtr&amp; updater)
     {
-      _fleet_handle-&gt;add_performable_action(action, consider);
-    }
-  }
-</code></pre>
-<ul>
-<li>Calculate the Planner::StartSet for each robot using compute_plan_starts with the robot's starting pose</li>
-</ul>
-<pre><code class="language-cpp">// Use Start or compute plan starts
-  if (std::holds_alternative&lt;Planner::Start&gt;(pose))
-  {
-    RCLCPP_INFO(_pimpl-&gt;_adapter-&gt;node()-&gt;get_logger(),
-      &quot;Using provided Planner::Start to initialize starts &quot;
-      &quot; for robot %s.&quot;,
-      robot_name.c_str());
-    const auto p = std::get&lt;Planner::Start&gt;(pose);
-    starts.push_back(p);
-  }
-  else if (std::holds_alternative&lt;Eigen::Vector3d&gt;(pose))
-  {
-    RCLCPP_INFO(_pimpl-&gt;_adapter-&gt;node()-&gt;get_logger(),
-      &quot;Running compute_plan_starts for robot %s.&quot;,
-      robot_name.c_str());
-    const auto p = std::get&lt;Eigen::Vector3d&gt;(pose);
-
-    RCLCPP_INFO(_pimpl-&gt;_adapter-&gt;node()-&gt;get_logger(),
-      &quot;Robot %s pose is [%.2f, %.2f, %.2f]&quot;,
-      robot_name.c_str(),
-      p.x(), p.y(), p.z());
-
-    // Use compute plan starts to estimate the start
-    starts = rmf_traffic::agv::compute_plan_starts(
-      *_pimpl-&gt;_graph, map_name, {p.x(), p.y(), p.z()},
-      rmf_traffic_ros2::convert(_pimpl-&gt;_adapter-&gt;node()-&gt;now()));
-  }
-
-  if (starts.empty())
-  {
-    RCLCPP_ERROR(_pimpl-&gt;_adapter-&gt;node()-&gt;get_logger(),
-      &quot;Unable to determine StartSet for %s&quot;, robot_name.c_str());
-
-    return false;
-  }
-</code></pre>
-<ul>
-<li>Add each robot to the fleet using FleetUpdateHandle::add_robot()</li>
-</ul>
-<pre><code class="language-cpp">    _pimpl-&gt;_fleet_handle-&gt;add_robot(
-      command, robot_name, _pimpl-&gt;_traits-&gt;profile(), starts,
-      [w = this-&gt;weak_from_this(), command, robot_name = std::move(robot_name)](
-        const RobotUpdateHandlePtr&amp; updater)
-      {
-        const auto self = w.lock();
-        if (!self)
-          return;
         command-&gt;set_updater(updater);
-        self-&gt;_pimpl-&gt;_robots[robot_name] = command;
-      });
+    });
 </code></pre>
 <footer id="open-on-gh">Found a bug? <a href="https://github.com/osrf/ros2multirobotbook/edit/main/src/integration_fleets_tutorial_cpp.md">Edit this page on GitHub.</a></footer>
                     </main>
