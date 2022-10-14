@@ -147,20 +147,45 @@ For more information about various functions please visit the hyperlinks in the 
 <p>The <code>Adapter</code> class helps you to communicate your fleet with other core RMF systems. You may use the function <code>add_fleet</code> to register your fleet with RMF.</p>
 <h2 id="fleetupdatehandle"><a class="header" href="#fleetupdatehandle"><a href="https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/FleetUpdateHandle.hpp">FleetUpdateHandle</a></a></h2>
 <blockquote>
-<p>Note: It's intentionally left up to the system integrators to decide how to structure your implementation when the user might receive different types of perform_action requests.
-Currently there is no support for deleting the robot.</p>
+<p>Currently there is no support for deleting the robot.</p>
 </blockquote>
+<ul>
+<li>
+<p>Question: <a href="https://github.com/open-rmf/rmf/discussions/145">How do I create multiple PerformActions?</a></p>
+<p>It's intentionally left up to the system integrators to decide how to structure their implementation when the user might receive different types of <code>perform_action</code> requests.
+A simple example for creating multiple PerformActions can be found below</p>
+<pre><code class="language-cpp">using ActionExecutor = rmf_fleet_adapter::agv::RobotUpdateHnadle::ActionExecutor;
+std::shared_ptr&lt;std::unordered_map&lt;std::string, std::function&lt;ActionExecutor&gt;&gt;&gt; executor_map;
+ActionExecutor dispatching_executor = [executor_map](
+  const std::string&amp; category,
+  const nlohmann::json&amp; description,
+  ActionExecution execution)
+{
+  executor_map-&gt;at(category)(category, description, std::move(execution));
+};
+robot_update_handle-&gt;set_action_executor(dispatching_executor);
+</code></pre>
+<p><code>executor_map</code> can be given a different executor for each <code>perform_action</code> category that is expected.</p>
+</li>
+</ul>
 <p>The <code>FleetUpdateHandle</code> works as handler between the fleet adapter and RMF. It tells RMF what are the tasks, requests and actions that the fleet can accept. Users can use the <code>FleetUpdateHandle</code> to register their robots to the fleet using <code>add_robot</code>, as well as add task capabilities (e.g. delivery, patrol, cleaning) and performable actions so that RMF can delegate them to the appropriate fleets accordingly. More information can be found in the API documentation.</p>
-<h3 id="information-regarding-charging-of-the-robot"><a class="header" href="#information-regarding-charging-of-the-robot">Information regarding charging of the robot</a></h3>
-<p>When the robot is idle, a timer periodically computes the estimated battery drain if the robot were to head back to the charger now. If the battery level after the estimated drain is within a safety factor applied to the recharge_threshold, the TaskManager will automatically begin a task to take the robot back to its charging station.
-The recharge_threshold is used in a similar manner during task allocation. When deciding the order of tasks performed, the TaskPlanner will estimate the battery level of the robot after performing a task A. If the estimate is below the recharge_threshold, it will then check if the robot can perform task A if it performed a recharge task before this. If this is the case then it will automatically include a recharge task before task A. If it still cannot perform task A even after recharging, it will discard the possibility of doing task A in that sequence.</p>
+<ul>
+<li>
+<p>Question: <a href="https://github.com/open-rmf/rmf/discussions/184">How does the automatic go to battery task work?</a></p>
+<p>When the robot is idle, a timer periodically computes the estimated battery drain if the robot were to head back to the charger now. If the battery level after the estimated drain is within a safety factor applied to the <code>recharge_threshold</code>, the <code>TaskManager</code> will automatically begin a task to take the robot back to its charging station.
+The <code>recharge_threshold</code> is used in a similar manner during task allocation. When deciding the order of tasks performed, the <code>TaskPlanner</code> will estimate the battery level of the robot after performing a <em>task A</em>. If the estimate is below the <code>recharge_threshold</code>, it will then check if the robot can perform <em>task A</em> if it performed a recharge task before this. If this is the case then it will automatically include a recharge task before task A. If it still cannot perform <em>task A</em> even after recharging, it will discard the possibility of doing <em>task A</em> in that sequence.</p>
+</li>
+</ul>
 <h2 id="robotupdatehandle"><a class="header" href="#robotupdatehandle"><a href="https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/RobotUpdateHandle.hpp">RobotUpdateHandle</a></a></h2>
 <p>The <code>RobotUpdateHandle</code> contains important callbacks to keep RMF updated about the robot's status.</p>
 <h2 id="robotcommandhandle"><a class="header" href="#robotcommandhandle"><a href="https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/RobotCommandHandle.hpp">RobotCommandHandle</a></a></h2>
 <p>This is an abstract class that users have to implement in order for their fleet adapters to receive commands from RMF successfully. Users should implement the functions <code>follow_new_path</code>, <code>stop</code> and <code>dock</code>, then fill in the internal logic accordingly to relay the navigation commands to their robot.</p>
-<blockquote>
-<p>Note:- The waypoints argument that will be given to the follow_new_path function of the RobotCommandHandle contains a list of <code>rmf_traffic::agv::Plan::Waypoint</code> objects that have a graph_index function.When that graph_index is non-null it can be passed to <code>Graph::get_waypoint</code> and then <code>Graph::Waypoint::get_map_name</code> can be called to check what the current map is for that waypoint. If there is a change in map name, then you robot should change its map.We don't provide an out-of-the-box hook for this because map switching logic is likely to vary too much between robots and deployments. For example, in a certain deployment you might need the robot to decompose a very large floor into multiple maps internally, but inside the RMF traffic system those multiple maps would all be part of one single map. In that case you'd need a dictionary of nav graph index -&gt; robot's internal map name.</p>
-</blockquote>
+<ul>
+<li>
+<p>Question: <a href="https://github.com/open-rmf/rmf/discussions/180">How do I tell the fleet adapter if the map has changed?</a></p>
+<p>The waypoints argument that will be given to the <code>follow_new_path</code> function of the <code>RobotCommandHandle</code> contains a list of <code>rmf_traffic::agv::Plan::Waypoint</code> objects that have a <code>graph_index</code> function.When that <code>graph_index</code> is non-null it can be passed to <code>Graph::get_waypoint</code> and then <code>Graph::Waypoint::get_map_name</code> can be called to check what the current map is for that waypoint. If there is a change in map name, then you robot should change its map.We don't provide an out-of-the-box hook for this because map switching logic is likely to vary too much between robots and deployments. For example, in a certain deployment you might need the robot to decompose a very large floor into multiple maps internally, but inside the RMF traffic system those multiple maps would all be part of one single map. In that case you'd need a dictionary of nav graph index -&gt; robot's internal map name.</p>
+</li>
+</ul>
 <h2 id="steps-to-use-rmf_fleet_adapter"><a class="header" href="#steps-to-use-rmf_fleet_adapter">Steps to use rmf_fleet_adapter:</a></h2>
 <h3 id="step-1"><a class="header" href="#step-1">Step 1</a></h3>
 <p>Make an Adapter instance using</p>
@@ -229,7 +254,7 @@ The recharge_threshold is used in a similar manner during task allocation. When 
     });
 </code></pre>
 <ul>
-<li>Setting important parameters for the task planner. Users can create the respective objects for these parameters and pass them to the fleet handle via <code>set_task_planner_param</code>.  The header files for these objects can be found in the <a href="https://github.com/open-rmf/rmf_battery/tree/main/rmf_battery/include/rmf_battery/agv"><code>rmf_battery</code></a> repository.
+<li>Setting important parameters for the task planner. Users can create the respective objects for these parameters and pass them to the fleet handle via <code>set_task_planner_param</code>. The header files for these objects can be found in the <a href="https://github.com/open-rmf/rmf_battery/tree/main/rmf_battery/include/rmf_battery/agv"><code>rmf_battery</code></a> repository.
 For example, to set the battery system parameters:</li>
 </ul>
 <pre><code class="language-cpp">auto battery_system_optional = rmf_battery::agv::BatterySystem::make(
