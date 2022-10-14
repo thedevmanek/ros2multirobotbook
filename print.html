@@ -4823,33 +4823,7 @@ For more information about various functions please visit the hyperlinks in the 
 <blockquote>
 <p>Currently there is no support for deleting the robot.</p>
 </blockquote>
-<ul>
-<li>
-<p>Question: <a href="https://github.com/open-rmf/rmf/discussions/145">How do I create multiple PerformActions?</a></p>
-<p>It's intentionally left up to the system integrators to decide how to structure their implementation when the user might receive different types of <code>perform_action</code> requests.
-A simple example for creating multiple PerformActions can be found below</p>
-<pre><code class="language-cpp">using ActionExecutor = rmf_fleet_adapter::agv::RobotUpdateHnadle::ActionExecutor;
-std::shared_ptr&lt;std::unordered_map&lt;std::string, std::function&lt;ActionExecutor&gt;&gt;&gt; executor_map;
-ActionExecutor dispatching_executor = [executor_map](
-  const std::string&amp; category,
-  const nlohmann::json&amp; description,
-  ActionExecution execution)
-{
-  executor_map-&gt;at(category)(category, description, std::move(execution));
-};
-robot_update_handle-&gt;set_action_executor(dispatching_executor);
-</code></pre>
-<p><code>executor_map</code> can be given a different executor for each <code>perform_action</code> category that is expected.</p>
-</li>
-</ul>
 <p>The <code>FleetUpdateHandle</code> works as handler between the fleet adapter and RMF. It tells RMF what are the tasks, requests and actions that the fleet can accept. Users can use the <code>FleetUpdateHandle</code> to register their robots to the fleet using <code>add_robot</code>, as well as add task capabilities (e.g. delivery, patrol, cleaning) and performable actions so that RMF can delegate them to the appropriate fleets accordingly. More information can be found in the API documentation.</p>
-<ul>
-<li>
-<p>Question: <a href="https://github.com/open-rmf/rmf/discussions/184">How does the automatic go to battery task work?</a></p>
-<p>When the robot is idle, a timer periodically computes the estimated battery drain if the robot were to head back to the charger now. If the battery level after the estimated drain is within a safety factor applied to the <code>recharge_threshold</code>, the <code>TaskManager</code> will automatically begin a task to take the robot back to its charging station.
-The <code>recharge_threshold</code> is used in a similar manner during task allocation. When deciding the order of tasks performed, the <code>TaskPlanner</code> will estimate the battery level of the robot after performing a <em>task A</em>. If the estimate is below the <code>recharge_threshold</code>, it will then check if the robot can perform <em>task A</em> if it performed a recharge task before this. If this is the case then it will automatically include a recharge task before task A. If it still cannot perform <em>task A</em> even after recharging, it will discard the possibility of doing <em>task A</em> in that sequence.</p>
-</li>
-</ul>
 <h2 id="robotupdatehandle"><a class="header" href="#robotupdatehandle"><a href="https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/RobotUpdateHandle.hpp">RobotUpdateHandle</a></a></h2>
 <p>The <code>RobotUpdateHandle</code> contains important callbacks to keep RMF updated about the robot's status.</p>
 <h2 id="robotcommandhandle"><a class="header" href="#robotcommandhandle"><a href="https://github.com/open-rmf/rmf_ros2/blob/main/rmf_fleet_adapter/include/rmf_fleet_adapter/agv/RobotCommandHandle.hpp">RobotCommandHandle</a></a></h2>
@@ -4937,9 +4911,16 @@ auto battery_system = std::make_shared&lt;rmf_battery::agv::BatterySystem&gt;(
     *battery_system_optional);
 </code></pre>
 <ul>
-<li>Setting the fleet's finishing request
+<li>
+<p>Question: <a href="https://github.com/open-rmf/rmf/discussions/184">How does the automatic go to battery task work?</a></p>
+<p>When the robot is idle, a timer periodically computes the estimated battery drain if the robot were to head back to the charger now. If the battery level after the estimated drain is within a safety factor applied to the <code>recharge_threshold</code>, the <code>TaskManager</code> will automatically begin a task to take the robot back to its charging station.
+The <code>recharge_threshold</code> is used in a similar manner during task allocation. When deciding the order of tasks performed, the <code>TaskPlanner</code> will estimate the battery level of the robot after performing a <em>task A</em>. If the estimate is below the <code>recharge_threshold</code>, it will then check if the robot can perform <em>task A</em> if it performed a recharge task before this. If this is the case then it will automatically include a recharge task before task A. If it still cannot perform <em>task A</em> even after recharging, it will discard the possibility of doing <em>task A</em> in that sequence.</p>
+</li>
+<li>
+<p>Setting the fleet's finishing request
 You may choose a finishing task for your fleet's robots between <code>park</code>, <code>charge</code> and <code>nothing</code>. You will need to create a <code>rmf_task::ConstRequestFactoryPtr</code> object and set them to the right finishing request.
-The header files for the finishing requests can be found <a href="https://github.com/open-rmf/rmf_task/tree/main/rmf_task/include/rmf_task/requests">here</a> in the <code>rmf_task</code> repository.</li>
+The header files for the finishing requests can be found <a href="https://github.com/open-rmf/rmf_task/tree/main/rmf_task/include/rmf_task/requests">here</a> in the <code>rmf_task</code> repository.</p>
+</li>
 </ul>
 <p>For example, to set the finishing request to <code>charge</code>:</p>
 <pre><code class="language-cpp">rmf_task::ConstRequestFactoryPtr finishing_request = nullptr;
@@ -4967,6 +4948,25 @@ finishing_request = std::make_shared&lt;rmf_task::requests::ChargeBatteryFactory
 _fleet_handle-&gt;consider_patrol_requests(consider);
 _fleet_handle-&gt;add_performable_action(&quot;teleop&quot;, consider);
 </code></pre>
+<ul>
+<li>
+<p>Question: <a href="https://github.com/open-rmf/rmf/discussions/145">How do I create multiple PerformActions?</a></p>
+<p>It's intentionally left up to the system integrators to decide how to structure their implementation when the user might receive different types of <code>perform_action</code> requests.
+A simple example for creating multiple PerformActions can be found below</p>
+<pre><code class="language-cpp">using ActionExecutor = rmf_fleet_adapter::agv::RobotUpdateHnadle::ActionExecutor;
+std::shared_ptr&lt;std::unordered_map&lt;std::string, std::function&lt;ActionExecutor&gt;&gt;&gt; executor_map;
+ActionExecutor dispatching_executor = [executor_map](
+  const std::string&amp; category,
+  const nlohmann::json&amp; description,
+  ActionExecution execution)
+{
+  executor_map-&gt;at(category)(category, description, std::move(execution));
+};
+robot_update_handle-&gt;set_action_executor(dispatching_executor);
+</code></pre>
+<p><code>executor_map</code> can be given a different executor for each <code>perform_action</code> category that is expected.</p>
+</li>
+</ul>
 <h3 id="step-3"><a class="header" href="#step-3">Step 3</a></h3>
 <ul>
 <li>Compute <code>Planner::StartSet</code> for each robot
